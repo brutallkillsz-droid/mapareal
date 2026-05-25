@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HSE Dashboard | Operações</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* =========================================================
+       VARIÁVEIS DE TEMA (CLARO E ESCURO) - IDENTIDADE SHOPEE
+       ========================================================= */
+    :root {
+      /* Shopee Brand Colors */
+      --brand-primary: #ee4d2d;
+      --brand-hover: #ff6b4f;
+      
+      /* Light Theme Colors */
+      --bg-body: #f5f5f5;
+      --bg-card: #ffffff;
+      --bg-header: #ffffff;
+      --text-main: #222222;
+      --text-muted: #757575;
+      --border-color: #eaeaea;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+      
+      /* UI Elements */
+      --radius-lg: 16px;
+      --radius-md: 8px;
+      --table-hover: #fafafa;
+      --badge-safe-bg: #eaffea;
+      --badge-safe-border: #cbf8cb;
+      --badge-safe-text: #1e871e;
+      --card-gray-bg: #f9f9f9;
+      --card-gray-border: #eee;
+    }
+
+    [data-theme="dark"] {
+      /* Dark Theme Colors */
+      --bg-body: #121212;
+      --bg-card: #1e1e1e;
+      --bg-header: #1e1e1e;
+      --text-main: #f5f5f5;
+      --text-muted: #aaaaaa;
+      --border-color: #333333;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5);
+      
+      /* Dark adjustments */
+      --table-hover: #2a2a2a;
+      --badge-safe-bg: #112d11;
+      --badge-safe-border: #1e4d1e;
+      --badge-safe-text: #4ade4a;
+      --card-gray-bg: #2a2a2a;
+      --card-gray-border: #333333;
+    }
+
+    * { box-sizing: border-box; }
+    
+    body { 
+      font-family: 'Inter', sans-serif; 
+      background-color: var(--bg-body); 
+      color: var(--text-main); 
+      margin: 0; padding: 0; 
+      transition: background-color 0.3s ease, color 0.3s ease;
+      -webkit-font-smoothing: antialiased; 
+    }
+    
+    /* ================= NAVBAR & HEADER ================= */
+    .header { 
+      background: var(--bg-header); 
+      padding: 16px 40px; 
+      box-shadow: var(--shadow-sm); 
+      display: flex; align-items: center; justify-content: space-between; 
+      border-bottom: 1px solid var(--border-color);
+      position: sticky; top: 0; z-index: 1000;
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .brand-icon {
+      background: var(--brand-primary); color: white; width: 36px; height: 36px;
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 18px;
+    }
+    .header h1 { font-size: 20px; font-weight: 700; color: var(--text-main); margin: 0; letter-spacing: -0.5px; }
+    
+    .header-right { display: flex; align-items: center; gap: 20px; }
+    
+    .status-badge { 
+      font-size: 12px; color: var(--text-muted); font-weight: 600; 
+      background: var(--bg-body); padding: 8px 16px; border-radius: 20px; 
+      border: 1px solid var(--border-color); display: flex; align-items: center; gap: 8px; 
+    }
+    .dot-live { width: 8px; height: 8px; background-color: #32CD32; border-radius: 50%; animation: piscarLive 1.5s infinite alternate; box-shadow: 0 0 8px #32CD32;}
+    @keyframes piscarLive { from { opacity: 0.5; } to { opacity: 1; } }
+
+    /* BOTÃO DARK MODE */
+    .theme-toggle {
+      background: var(--bg-body); border: 1px solid var(--border-color);
+      color: var(--text-main); width: 40px; height: 40px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.2s ease; font-size: 18px;
+    }
+    .theme-toggle:hover { border-color: var(--brand-primary); color: var(--brand-primary); }
+
+    /* ================= MAIN & TABS ================= */
+    .main-container { max-width: 1440px; margin: 30px auto; padding: 0 20px; }
+    
+    .tabs-wrapper {
+      display: flex; gap: 8px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 5px;
+    }
+    .tabs-wrapper::-webkit-scrollbar { height: 4px; }
+    .tabs-wrapper::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+
+    .tab-btn { 
+      padding: 12px 24px; border: 1px solid var(--border-color); background: var(--bg-card); 
+      border-radius: 30px; font-size: 14px; font-weight: 600; color: var(--text-muted); 
+      cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;
+      white-space: nowrap; box-shadow: var(--shadow-sm);
+    }
+    .tab-btn.active { 
+      background: var(--brand-primary); color: white; border-color: var(--brand-primary);
+      box-shadow: 0 4px 12px rgba(238, 77, 45, 0.3); 
+    }
+    .tab-btn:hover:not(.active) { border-color: var(--brand-primary); color: var(--brand-primary); }
+    
+    .tabcontent { display: none; animation: fadeIn 0.4s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    .card { 
+      background: var(--bg-card); border-radius: var(--radius-lg); 
+      box-shadow: var(--shadow-md); overflow: hidden; border: 1px solid var(--border-color); 
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+
+    /* ================= COMPONENTES ================= */
+    #mapa-container { height: 650px; width: 100%; z-index: 1; }
+
+    /* Estilização da Tabela */
+    .table-header-actions { padding: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; border-bottom: 1px solid var(--border-color);}
+    .table-wrapper { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; padding: 16px 24px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); background: var(--bg-card); }
+    td { padding: 16px 24px; border-bottom: 1px solid var(--border-color); color: var(--text-main); font-weight: 500;}
+    tbody tr:hover { background: var(--table-hover); }
+    
+    .badge { background: var(--bg-body); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; border: 1px solid var(--border-color); display: inline-block; color: var(--text-main); }
+    .badge-afastamento { background: rgba(255, 59, 48, 0.1); color: #ff3b30; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; border: 1px solid rgba(255, 59, 48, 0.2); }
+
+    /* Select e Filtros */
+    .custom-select {
+      background: var(--bg-body); color: var(--text-main); border: 1px solid var(--border-color);
+      padding: 10px 32px 10px 16px; border-radius: 8px; font-family: 'Inter', sans-serif;
+      font-size: 13px; font-weight: 600; cursor: pointer; outline: none; appearance: none;
+    }
+    .btn-clear { background: var(--text-main); color: var(--bg-card); border: none; padding: 10px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: none; transition: 0.2s; }
+    .btn-clear:hover { opacity: 0.8; }
+
+    /* Dashboard BI & Cards */
+    .bi-dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-bottom: 24px; }
+    .kpi-card { background: var(--bg-card); border-radius: var(--radius-lg); padding: 24px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: center; position: relative; overflow: hidden; }
+    .kpi-title { font-size: 12px; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;}
+    .kpi-value { font-size: 36px; font-weight: 800; color: var(--text-main); letter-spacing: -1px;}
+    .kpi-sub { font-size: 13px; color: var(--text-muted); font-weight: 500; margin-top: 4px; }
+    
+    .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+    .chart-container { background: var(--bg-card); border-radius: var(--radius-lg); padding: 24px; border: 1px solid var(--border-color); position: relative; height: 400px; }
+    .chart-title { font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 20px; }
+
+    /* =========================================================================
+       GESTÃO DE REGIONAIS (A ESTRUTURA ORIGINAL 100% MANTIDA + CORES TEMÁTICAS)
+       ========================================================================= */
+    .subregional-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 24px; }
+    .sub-card { background: var(--bg-card); border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); position: relative; overflow: hidden; }
+    
+    .status-bar { position: absolute; top: 0; left: 0; right: 0; height: 4px; }
+    .status-bar.safe { background-color: #32CD32; }
+    .status-bar.alert { background-color: #ff3b30; }
+
+    .sub-header { border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px; margin-top: 5px;}
+    .sub-title { font-size: 18px; font-weight: 700; color: var(--text-main); }
+    
+    .sub-kpis { display: flex; justify-content: space-between; margin-bottom: 16px; gap: 10px; }
+    .sub-kpi-box { text-align: center; background: var(--card-gray-bg); padding: 12px 6px; border-radius: 8px; flex: 1; border: 1px solid var(--card-gray-border); display: flex; flex-direction: column; justify-content: center; }
+    .sub-kpi-box.total { border-bottom: 3px solid var(--brand-primary); }
+    .sub-kpi-box.afast { border-bottom: 3px solid #ff3b30; }
+    .sub-kpi-box.ps { border-bottom: 3px solid #ffcc00; }
+    .sub-kpi-num { font-size: 22px; font-weight: 700; color: var(--text-main); line-height: 1.1; }
+    .sub-kpi-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-top: 4px; }
+
+    .sub-middle-row { display: flex; gap: 16px; align-items: center; margin-bottom: 16px; background: var(--bg-body); padding: 12px; border-radius: 8px; border: 1px solid var(--border-color); }
+    .mini-chart-wrapper { width: 90px; height: 90px; position: relative; flex-shrink: 0; }
+    .sub-causa-wrapper { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+    .sub-causa-title { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 4px; }
+    .sub-causa-text { font-size: 14px; font-weight: 700; color: var(--brand-primary); line-height: 1.3; }
+    .sub-causa-qtd { font-size: 12px; color: #ff3b30; font-weight: 600; margin-top: 2px;}
+
+    .hub-list { max-height: 250px; overflow-y: auto; padding-right: 5px; margin-bottom: 12px; }
+    .hub-list::-webkit-scrollbar { width: 6px; }
+    .hub-list::-webkit-scrollbar-track { background: var(--bg-body); border-radius: 4px; }
+    .hub-list::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+
+    .hub-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed var(--border-color); font-size: 13px; align-items: center; }
+    .hub-item:last-child { border-bottom: none; }
+    .hub-name { color: var(--text-main); font-weight: 500; font-size: 12px; }
+    .hub-stats { display: flex; gap: 8px; }
+    .stat-badge { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+    .stat-badge.afast { background: rgba(255,59,48,0.1); color: #ff3b30; border: 1px solid rgba(255,59,48,0.2); }
+    .stat-badge.ps { background: rgba(255,204,0,0.1); color: #d4a000; border: 1px solid rgba(255,204,0,0.3); }
+    .stat-badge.zero { background: var(--bg-body); color: var(--text-muted); border: 1px solid var(--border-color); }
+    
+    .safe-msg { margin-top: 12px; padding: 8px; background: var(--badge-safe-bg); border-radius: 6px; text-align: center; font-size: 12px; font-weight: 600; color: var(--badge-safe-text); border: 1px solid var(--badge-safe-border);}
+
+    /* PONTOS NEON NO MAPA */
+    .ponto-neon { border-radius: 50%; width: 12px; height: 12px; border: 2px solid #ffffff; }
+    .ponto-neon-recente { background-color: #FF0000; border-radius: 50%; width: 14px; height: 14px; border: 2px solid #ffffff; box-shadow: 0 0 10px #FF0000, 0 0 20px #FF0000; animation: piscarNeonRecente 1.2s infinite alternate; }
+    @keyframes piscarNeonRecente { from { transform: scale(0.9); opacity: 0.8; } to { transform: scale(1.4); opacity: 1; box-shadow: 0 0 15px #FF0000, 0 0 25px #FF0000; } }
+
+    /* Popups do Leaflet em Dark Mode */
+    .leaflet-popup-content-wrapper { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+    .leaflet-popup-tip { background: var(--bg-card); }
+    .info.legend { background: var(--bg-card); color: var(--text-main); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 12px; }
+    .info.legend h4 { color: var(--text-main); border-bottom: 1px solid var(--border-color); }
+    .legend-color { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 10px; border: 2px solid #ffffff; }
+
+    /* Loading */
+    #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-body); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.5s ease; }
+    .spinner { width: 40px; height: 40px; border: 4px solid var(--border-color); border-top-color: var(--brand-primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: var(--text-main); font-size: 18px; font-weight: 700; }
+
+  </style>
+</head>
+<body>
+
+  <!-- LOADING -->
+  <div id="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Sincronizando Sistema HSE...</div>
+  </div>
+
+  <!-- CABEÇALHO SUPERIOR -->
+  <header class="header">
+    <div class="header-left">
+      <div class="brand-icon">S</div>
+      <h1>Painel de Controle | HSE</h1>
+    </div>
+    <div class="header-right">
+      <div class="status-badge" id="statusHeader">
+        <div class="dot-live"></div>
+        Aguardando Carga...
+      </div>
+      <!-- BOTÃO DE DARK MODE -->
+      <button class="theme-toggle" id="btnTheme" onclick="toggleTheme()" title="Alternar Modo Escuro">🌙</button>
+    </div>
+  </header>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="main-container">
+    
+    <!-- ABAS NAVEGAÇÃO -->
+    <div class="tabs-wrapper">
+      <button class="tab-btn active" onclick="openTab(event, 'MapaTab')">🗺️ Visão Geográfica</button>
+      <button class="tab-btn" onclick="openTab(event, 'DadosTab')">📋 Log de Ocorrências</button>
+      <button class="tab-btn" onclick="openTab(event, 'EstatisticaTab')">📊 BI Executivo</button>
+      <button class="tab-btn" onclick="openTab(event, 'RegionaisTab')">👔 Gestão de Regionais</button>
+    </div>
+
+    <!-- 1. MAPA -->
+    <div id="MapaTab" class="tabcontent" style="display:block;">
+      <div class="card">
+        <div id="mapa-container"></div>
+      </div>
+    </div>
+
+    <!-- 2. TABELA -->
+    <div id="DadosTab" class="tabcontent">
+      <div class="card">
+        <div class="table-header-actions">
+          <h3 style="margin: 0; font-size: 18px;">Detalhes Estratégicos</h3>
+          <div style="display: flex; gap: 10px; align-items: center;">
+            <select id="filtroRegiaoTabela" class="custom-select" onchange="aplicarFiltrosTabela()">
+              <option value="Todas">🌍 Todas as Regiões</option>
+              <option value="São Paulo">São Paulo (Azul)</option>
+              <option value="Sudeste - Centro-Oeste">Sudeste / C. Oeste (Laranja)</option>
+              <option value="Região Sul">Região Sul (Marrom)</option>
+              <option value="Região Nordeste">Nordeste (Roxo)</option>
+              <option value="Região Norte">Norte (Verde)</option>
+              <option value="Rio de Janeiro - Espírito Santo">RJ / ES (Azul Bebê)</option>
+            </select>
+            <button id="btnLimparFiltro" class="btn-clear" onclick="limparFiltroHub()">✕ Limpar Base</button>
+          </div>
+        </div>
+        <div class="table-wrapper">
+          <table id="tabelaDados"></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. BI ESTATÍSTICA -->
+    <div id="EstatisticaTab" class="tabcontent">
+      <div class="tabs-wrapper">
+        <button class="tab-btn active" onclick="mudarRegiaoBI('Geral', this)">Total Operação</button>
+        <button class="tab-btn" onclick="mudarRegiaoBI('São Paulo', this)">São Paulo</button>
+        <button class="tab-btn" onclick="mudarRegiaoBI('Sudeste - Centro-Oeste', this)">Sudeste / C. Oeste</button>
+        <button class="tab-btn" onclick="mudarRegiaoBI('Região Sul', this)">Região Sul</button>
+        <button class="tab-btn" onclick="mudarRegiaoBI('Região Nordeste', this)">Nordeste</button>
+        <button class="tab-btn" onclick="mudarRegiaoBI('Região Norte', this)">Norte</button>
+        <button class="tab-btn" onclick="mudarRegiaoBI('Rio de Janeiro - Espírito Santo', this)">RJ / ES</button>
+        <button class="tab-btn" onclick="mudarRegiaoBI('SOC', this)">SOC (Central)</button>
+      </div>
+
+      <div class="bi-dashboard">
+        <div class="kpi-card">
+          <div class="kpi-title">Eventos (12 Meses)</div>
+          <div class="kpi-value" id="kpiTotal">0</div>
+          <div class="kpi-sub" id="kpiTotalSub">Análise de longo prazo</div>
+        </div>
+        <div class="kpi-card" style="border-top: 4px solid #ff3b30;">
+          <div class="kpi-title">Com Ocorrência</div>
+          <div class="kpi-value" id="kpiAfastamento" style="color: #ff3b30;">0</div>
+          <div class="kpi-sub" id="kpiAfastamentoSub">0% do total</div>
+        </div>
+        <div class="kpi-card" style="border-top: 4px solid #ffcc00;">
+          <div class="kpi-title">Primeiros Socorros</div>
+          <div class="kpi-value" id="kpiPS" style="color: #ffcc00;">0</div>
+          <div class="kpi-sub" id="kpiPSSub">0% do total</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Ofensor Principal</div>
+          <div class="kpi-value" style="font-size: 16px; color: var(--brand-primary);" id="kpiCausa">-</div>
+          <div class="kpi-sub" id="kpiCausaSub">Causa Raiz Dominante</div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-container">
+          <div class="chart-title">Curva de Tendência Mensal</div>
+          <canvas id="barChart"></canvas>
+        </div>
+        <div class="chart-container">
+          <div class="chart-title">Mapeamento de Causas</div>
+          <canvas id="donutChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. GESTÃO DE REGIONAIS (RESTAURADO COM A LÓGICA ORIGINAL) -->
+    <div id="RegionaisTab" class="tabcontent">
+      <div class="tabs-wrapper" id="filtrosGerentes"></div>
+      <div class="subregional-grid" id="gridSubRegionais"></div>
+    </div>
+
+  </main>
+
+  <script>
+    // =========================================================================
+    // LÓGICA DE DARK MODE E TEMAS
+    // =========================================================================
+    function getSavedTheme() { return localStorage.getItem('theme') || 'light'; }
+    
+    function applyTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      document.getElementById('btnTheme').innerText = theme === 'dark' ? '☀️' : '🌙';
+      
+      Chart.defaults.color = theme === 'dark' ? '#aaaaaa' : '#757575';
+      Chart.defaults.borderColor = theme === 'dark' ? '#333333' : '#eaeaea';
+      
+      if(chartEvolucao) chartEvolucao.update();
+      if(chartCausas) chartCausas.update();
+    }
+
+    function toggleTheme() {
+      const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('theme', newTheme);
+      applyTheme(newTheme);
+      trocarTilesMapa(newTheme);
+    }
+
+    applyTheme(getSavedTheme());
+
+    // =========================================================================
+    // DADOS E FIREBASE
+    // =========================================================================
+    const FIREBASE_URL = "https://hse-security-default-rtdb.asia-southeast1.firebasedatabase.app/dashboard_hse.json";
+
+    var dadosTabela = [], estatisticaGlobais = {}, dadosRegionais = {}, hubsCriticosGlobal = [];
+    var regiaoAtualBI = 'Geral', gerenteAtual = 'Pedro Evangelista', hubFiltradoAtual = null; 
+    var map, lightLayer, darkLayer, marcadores = [], tourIntervalo, chartEvolucao, chartCausas, subCharts = [];
+
+    // =========================================================================
+    // MAPA (LEAFLET) COM SUPORTE A TEMA ESCURO
+    // =========================================================================
+    function criarIcone(corHtml) {
+      return L.divIcon({ className: 'custom-div-icon', html: "<div class='ponto-neon' style='background-color:"+corHtml+"; box-shadow: 0 0 10px "+corHtml+";'></div>", iconSize: [16, 16], iconAnchor: [8,8] });
+    }
+    
+    function criarIconeRecente() {
+      return L.divIcon({ className: 'custom-div-icon', html: "<div class='ponto-neon-recente'></div>", iconSize: [18, 18], iconAnchor: [9,9] });
+    }
+
+    function carregarMapaInicial() {
+      map = L.map('mapa-container', { minZoom: 4 }).setView([-16.5, -49.0], 5);
+      
+      lightLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 });
+      darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 });
+      
+      trocarTilesMapa(getSavedTheme());
+
+      var legend = L.control({position: 'bottomright'});
+      legend.onAdd = function () {
+          var div = L.DomUtil.create('div', 'info legend');
+          div.innerHTML = '<h4>Legenda Operacional</h4>';
+          var cores = [
+            {c: '#FF0000', t: 'Ocorrência (24h)'}, {c: '#1A237E', t: 'São Paulo'},
+            {c: '#FF8C00', t: 'Sudeste / C.O.'}, {c: '#8B4513', t: 'Sul'},
+            {c: '#d542f5', t: 'Nordeste'}, {c: '#32CD32', t: 'Norte'}, {c: '#5DADE2', t: 'RJ / ES'}
+          ];
+          cores.forEach(item => div.innerHTML += `<div class="legend-item"><span class="legend-color" style="background:${item.c}; box-shadow: 0 0 10px ${item.c}"></span><span>${item.t}</span></div>`);
+          return div;
+      };
+      legend.addTo(map);
+      map.on('mousedown', () => clearInterval(tourIntervalo));
+    }
+
+    function trocarTilesMapa(theme) {
+      if (!map) return;
+      if (theme === 'dark') {
+        if (map.hasLayer(lightLayer)) map.removeLayer(lightLayer);
+        darkLayer.addTo(map);
+      } else {
+        if (map.hasLayer(darkLayer)) map.removeLayer(darkLayer);
+        lightLayer.addTo(map);
+      }
+    }
+
+    function renderizarMapa(hubsArray) {
+      marcadores.forEach(m => map.removeLayer(m));
+      marcadores = [];
+      var boundCoords = [];
+      clearInterval(tourIntervalo);
+
+      hubsArray.forEach(hub => {
+        let iconeUsado;
+        if (hub.isRecente) { iconeUsado = criarIconeRecente(); }
+        else {
+          let cor = (hub.corEsp === 'verde' ? '#32CD32' : 
+                    (hub.corEsp === 'roxo' ? '#d542f5' : 
+                    (hub.corEsp === 'azul' || hub.corEsp === 'azul-verde' ? '#1A237E' : 
+                    (hub.corEsp === 'marrom' || hub.corEsp === 'azul-lilas' ? '#8B4513' : 
+                    (hub.corEsp === 'azul-bebe' || hub.corEsp === 'marrom-laranja' ? '#5DADE2' : '#FF8C00')))));
+          iconeUsado = criarIcone(cor);
+        }
+
+        var marker = L.marker([hub.lat, hub.lng], {icon: iconeUsado}).addTo(map);
+        var prefix = hub.codigo ? hub.codigo.split("-")[1] + "-" + hub.codigo.split("-")[2] : ""; 
+        var cidade = hub.nome.split(" - ")[0];   
+        
+        marker.bindPopup(`<b>${prefix} - ${cidade}</b><br/><span style='color:var(--brand-primary); font-weight:700;'>Data: ${hub.dataAcidente}</span><br/><span style='font-size:12px; color:var(--text-muted);'>Causa: ${hub.causa}</span>`);
+        marker.on('dblclick', () => abrirTabelaFiltrada(hub.nome));
+
+        marcadores.push(marker);
+        boundCoords.push([hub.lat, hub.lng]);
+      });
+
+      if (boundCoords.length > 0) {
+        map.fitBounds(L.latLngBounds(boundCoords), { padding: [50, 50], maxZoom: 6 });
+        iniciarModoTour();
+      }
+    }
+
+    function iniciarModoTour() {
+      if (marcadores.length <= 1) return; 
+      var idx = 0;
+      setTimeout(() => {
+        tourIntervalo = setInterval(() => {
+          map.flyTo(marcadores[idx].getLatLng(), 7, { animate: true, duration: 2 });
+          setTimeout(() => marcadores[idx].openPopup(), 2000);
+          idx = (idx + 1) % marcadores.length;
+        }, 8000); 
+      }, 5000);
+    }
+
+    // =========================================================================
+    // LÓGICA DE TABELAS, ABAS E BI
+    // =========================================================================
+    function aplicarFiltrosTabela() {
+        var regiao = document.getElementById("filtroRegiaoTabela").value;
+        var linhas = dadosTabela;
+        if (regiao !== "Todas") linhas = linhas.filter(r => r.regiao === regiao);
+        if (hubFiltradoAtual) {
+            linhas = linhas.filter(r => r.hub === hubFiltradoAtual);
+            document.getElementById("btnLimparFiltro").style.display = "block";
+        } else {
+            document.getElementById("btnLimparFiltro").style.display = "none";
+        }
+        renderizarLinhasTabela(linhas);
+    }
+
+    function renderizarLinhasTabela(linhas) {
+        var html = "<thead><tr><th>Região</th><th>Unidade</th><th>Responsável</th><th>HSE</th><th>Data Ocorrência</th><th>Local</th><th>Causa Raiz</th><th>Classificação</th></tr></thead><tbody>";
+        if (linhas.length === 0) { 
+            html += "<tr><td colspan='8' style='text-align:center; padding: 40px;'>Nenhuma ocorrência encontrada.</td></tr>"; 
+        } else {
+            linhas.forEach(r => {
+                let cor = r.regiao === "São Paulo" ? "#1A237E" : (r.regiao.includes("Sudeste") ? "#FF8C00" : (r.regiao.includes("Sul") ? "#8B4513" : (r.regiao.includes("Nordeste") ? "#d542f5" : (r.regiao.includes("Norte") ? "#32CD32" : "#5DADE2"))));
+                html += `<tr>
+                    <td><span class='badge' style='border-color:${cor}; color:${cor}; background:transparent;'>${r.regiao}</span></td>
+                    <td><span class='badge'>${r.hub}</span></td>
+                    <td>${r.responsavel}</td>
+                    <td>${r.hse}</td>
+                    <td>${r.dataHora}</td>
+                    <td>${r.local}</td>
+                    <td>${r.causa}</td>
+                    <td><span class='badge-afastamento'>${r.afastamento}</span></td>
+                </tr>`;
+            });
+        }
+        document.getElementById("tabelaDados").innerHTML = html + "</tbody>";
+    }
+
+    function abrirTabelaFiltrada(nomeHub) { 
+        hubFiltradoAtual = nomeHub; document.getElementById("filtroRegiaoTabela").value = "Todas"; 
+        openTab(null, 'DadosTab'); aplicarFiltrosTabela(); 
+    }
+    function limparFiltroHub() { hubFiltradoAtual = null; aplicarFiltrosTabela(); }
+
+    function openTab(evt, tabName) {
+      document.querySelectorAll(".tabcontent").forEach(tab => tab.style.display = "none");
+      document.querySelectorAll("#MapaTab ~ .tabs-wrapper .tab-btn").forEach(btn => btn.classList.remove("active"));
+      document.getElementById(tabName).style.display = "block";
+      if (evt) evt.currentTarget.classList.add("active");
+      
+      if(tabName === 'MapaTab' && map) setTimeout(() => map.invalidateSize(), 200);
+      if(tabName === 'EstatisticaTab') { if(chartEvolucao) chartEvolucao.resize(); if(chartCausas) chartCausas.resize(); }
+    }
+
+    function mudarRegiaoBI(nome, btn) {
+      regiaoAtualBI = nome;
+      btn.parentElement.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      renderizarBI(estatisticaGlobais);
+    }
+
+    function renderizarBI(stats) {
+      var d = stats[regiaoAtualBI];
+      if (!d) return;
+
+      var tot = d.totalAfastamento + d.totalPS;
+      document.getElementById('kpiTotal').innerText = tot;
+      document.getElementById('kpiAfastamento').innerText = d.totalAfastamento;
+      document.getElementById('kpiPS').innerText = d.totalPS;
+      document.getElementById('kpiAfastamentoSub').innerText = tot > 0 ? Math.round((d.totalAfastamento/tot)*100) + "% do total" : "0%";
+      document.getElementById('kpiPSSub').innerText = tot > 0 ? Math.round((d.totalPS/tot)*100) + "% do total" : "0%";
+      
+      var causasKeys = Object.keys(d.causas).sort((a,b) => d.causas[b] - d.causas[a]);
+      var topCausa = "Nenhuma";
+      if(causasKeys.length > 0 && causasKeys[0] === "Não Informado" && causasKeys.length > 1) topCausa = causasKeys[1];
+      else if(causasKeys.length > 0) topCausa = causasKeys[0];
+      
+      document.getElementById('kpiCausa').innerText = topCausa;
+
+      var meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+      var dAfast = meses.map(m => d.meses[m].afastamento);
+      var dPS = meses.map(m => d.meses[m].ps);
+
+      if(chartEvolucao) chartEvolucao.destroy();
+      chartEvolucao = new Chart(document.getElementById('barChart'), {
+        type: 'bar',
+        data: { labels: meses, datasets: [{ label: 'Ocorrências', data: dAfast, backgroundColor: '#ee4d2d', borderRadius:4}, { label: 'Primeiros Socorros', data: dPS, backgroundColor: '#ffcc00', borderRadius:4}] },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { stacked: true }, x: { stacked: true, grid: {display:false} } } }
+      });
+
+      var topN = causasKeys.slice(0,5), topV = topN.map(k => d.causas[k]);
+      if(chartCausas) chartCausas.destroy();
+      chartCausas = new Chart(document.getElementById('donutChart'), {
+        type: 'doughnut',
+        data: { labels: topN.length?topN:["Livre"], datasets: [{ data: topV.length?topV:[1], backgroundColor: topV.length?['#ee4d2d','#1A237E','#FF8C00','#32CD32','#5DADE2']:['#eaeaea'], borderWidth:0 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'right' } } }
+      });
+    }
+
+    // =========================================================================
+    // RESTAURAÇÃO EXATA DA LÓGICA DE REGIONAIS + CSS NOVO
+    // =========================================================================
+    function renderizarAbaRegionais(dadosDaAba) {
+      var filtrosDiv = document.getElementById('filtrosGerentes');
+      filtrosDiv.innerHTML = "";
+      
+      var primeiroGerente = null;
+      for (var gerente in dadosDaAba) {
+        if (!primeiroGerente) primeiroGerente = gerente;
+        var btn = document.createElement("button");
+        btn.className = "tab-btn" + (gerente === gerenteAtual ? " active" : "");
+        btn.innerText = "👔 " + gerente; 
+        btn.onclick = (function(g) { 
+          return function(evt) {
+            gerenteAtual = g;
+            filtrosDiv.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+            evt.currentTarget.classList.add("active");
+            montarCardsSubRegionais(dadosDaAba[g]);
+          };
+        })(gerente);
+        filtrosDiv.appendChild(btn);
+      }
+
+      if(!dadosDaAba[gerenteAtual] && primeiroGerente) {
+         gerenteAtual = primeiroGerente;
+         filtrosDiv.firstChild.classList.add("active");
+      }
+
+      montarCardsSubRegionais(dadosDaAba[gerenteAtual]);
+    }
+
+    function montarCardsSubRegionais(gerenteData) {
+      var grid = document.getElementById('gridSubRegionais');
+      grid.innerHTML = "";
+      
+      subCharts.forEach(c => c.destroy());
+      subCharts = [];
+      
+      var chartIndex = 0;
+
+      for (var subNome in gerenteData) {
+        var subInfo = gerenteData[subNome];
+        var card = document.createElement('div');
+        card.className = "sub-card";
+        
+        var totalAcidentes = subInfo.totalAfastamento + subInfo.totalPS;
+        var statusClass = totalAcidentes === 0 ? "safe" : "alert";
+        var statusColor = totalAcidentes === 0 ? "#32CD32" : "#ff3b30";
+        var statusText = totalAcidentes === 0 ? "🟢 Malha Assegurada" : "🔴 Gestão Exigida";
+        
+        var html = "<div class='status-bar " + statusClass + "'></div>";
+        html += "<div class='sub-header'><div class='sub-title'>👥 " + subNome + "</div><div style='font-size:12px; font-weight:600; color:" + statusColor + "; margin-top:4px;'>" + statusText + "</div></div>";
+        
+        // 3 CAIXINHAS
+        html += "<div class='sub-kpis'>";
+        html += "<div class='sub-kpi-box total'><div class='sub-kpi-num'>" + totalAcidentes + "</div><div class='sub-kpi-lbl'>Volume 30D</div></div>";
+        html += "<div class='sub-kpi-box afast'><div class='sub-kpi-num'>" + subInfo.totalAfastamento + "</div><div class='sub-kpi-lbl'>Ocorrências</div></div>";
+        html += "<div class='sub-kpi-box ps'><div class='sub-kpi-num'>" + subInfo.totalPS + "</div><div class='sub-kpi-lbl'>Pr. Socorros</div></div>";
+        html += "</div>";
+
+        // CAUSA OFENSORA
+        var maiorCausa = "Zera Acidentes";
+        var maxQtd = 0;
+        for (var c in subInfo.causas) {
+            if (subInfo.causas[c] > maxQtd && c !== "Não Informado") {
+                maxQtd = subInfo.causas[c];
+                maiorCausa = c;
+            }
+        }
+
+        var canvasId = "subChart_" + chartIndex;
+        html += "<div class='sub-middle-row'>";
+        html += "<div class='mini-chart-wrapper'><canvas id='" + canvasId + "'></canvas></div>";
+        html += "<div class='sub-causa-wrapper'>";
+        html += "<div class='sub-causa-title'>⚠️ Ofensor Crítico (30D)</div>";
+        html += "<div class='sub-causa-text'>" + maiorCausa + "</div>";
+        if(maxQtd > 0) html += "<div class='sub-causa-qtd'>" + maxQtd + " registro(s)</div>";
+        html += "</div></div>";
+
+        // LISTA DE HUBS COM SCROLL
+        var todosHubs = [];
+        var hubsZerados = 0;
+        for (var hCode in subInfo.hubs) {
+          var hData = subInfo.hubs[hCode];
+          todosHubs.push({codigo: hCode, nome: hData.nome, af: hData.afastamento, ps: hData.ps});
+          if (hData.afastamento === 0 && hData.ps === 0) hubsZerados++;
+        }
+        
+        todosHubs.sort(function(a,b){ return (b.af + b.ps) - (a.af + a.ps); });
+
+        html += "<div style='font-size: 11px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;'>Status da Malha (" + hubsZerados + " Inertes):</div>";
+        html += "<div class='hub-list'>";
+        
+        todosHubs.forEach(function(h) {
+          var nomeLimpo = h.nome.replace(/.+_(SP|MG|RJ|ES|PR|SC|RS|BA|CE|PE|PB|RN|AL|SE|MA|PI|GO|DF|MT|MS|AM|PA|RO|TO)_/, '');
+          html += "<div class='hub-item'>";
+          html += "<div class='hub-name'>📍 <b>" + h.codigo + "</b> <span style='font-weight:400;'>- " + nomeLimpo + "</span></div>";
+          html += "<div class='hub-stats'>";
+          
+          if(h.af > 0) { html += "<span class='stat-badge afast'>OC: " + h.af + "</span>"; } 
+          else { html += "<span class='stat-badge zero'>OC: 0</span>"; }
+          
+          if(h.ps > 0) { html += "<span class='stat-badge ps'>PS: " + h.ps + "</span>"; } 
+          else { html += "<span class='stat-badge zero'>PS: 0</span>"; }
+          
+          html += "</div></div>";
+        });
+        html += "</div>";
+        
+        if (hubsZerados === Object.keys(subInfo.hubs).length && hubsZerados > 0) {
+           html += "<div class='safe-msg'>✅ Malha Operacional 100% Blindada</div>";
+        }
+        
+        card.innerHTML = html;
+        grid.appendChild(card);
+
+        // Renderiza o Gráfico de Meia-Lua (Donut)
+        var ctxSub = document.getElementById(canvasId).getContext('2d');
+        var vAf = subInfo.totalAfastamento;
+        var vPs = subInfo.totalPS;
+        var chartData = (vAf === 0 && vPs === 0) ? [1] : [vAf, vPs];
+        var chartColors = (vAf === 0 && vPs === 0) ? ['#eaeaea'] : ['#ff3b30', '#ffcc00'];
+        
+        var miniChart = new Chart(ctxSub, {
+          type: 'doughnut',
+          data: {
+            labels: (vAf === 0 && vPs === 0) ? ['Status Limpo'] : ['Ocorrências', 'Pr. Socorros'],
+            datasets: [{ data: chartData, backgroundColor: chartColors, borderWidth: 0 }]
+          },
+          options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false }, tooltip: { enabled: (vAf > 0 || vPs > 0) } } }
+        });
+        subCharts.push(miniChart);
+        
+        chartIndex++;
+      }
+    }
+
+    // =========================================================================
+    // COMUNICAÇÃO COM O FIREBASE
+    // =========================================================================
+    function buscarDadosFirebase() {
+      var header = document.getElementById("statusHeader");
+      
+      fetch(FIREBASE_URL, { cache: "no-store" })
+        .then(res => res.json())
+        .then(data => {
+            if (!data) return;
+            dadosTabela = data.tabela || [];
+            hubsCriticosGlobal = data.mapa || [];
+            estatisticaGlobais = data.estatistica || {};
+            dadosRegionais = data.regionais || {};
+
+            document.getElementById('loading-overlay').style.opacity = '0';
+            setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 500);
+
+            renderizarMapa(hubsCriticosGlobal); 
+            aplicarFiltrosTabela(); 
+            renderizarBI(estatisticaGlobais); 
+            renderizarAbaRegionais(dadosRegionais); 
+
+            header.innerHTML = '<div class="dot-live"></div> Sincronizado (Online)';
+        })
+        .catch(err => {
+            console.error(err);
+            header.innerHTML = '<div class="dot-live" style="background:red;"></div> Offline';
+        });
+    }
+
+    window.onload = function() {
+        carregarMapaInicial();
+        buscarDadosFirebase();
+    };
+
+    setInterval(buscarDadosFirebase, 600000); // 10 min
+
+  </script>
+</body>
+</html>
