@@ -407,21 +407,25 @@
       return L.divIcon({ className: 'custom-div-icon', html: "<div class='ponto-neon-recente'></div>", iconSize: [18, 18], iconAnchor: [9,9] });
     }
 
-    function carregarMapaInicial() {
+   function carregarMapaInicial() {
+  // 1. Inicializa o mapa centrado no Brasil
   map = L.map('mapa-container', { minZoom: 4 }).setView([-16.5, -49.0], 5);
   
-  // Novos links gratuitos da Esri (ArcGIS) sem exigência de API Key
+  // 2. Camada Clara da Esri (gratuita e sem chave de API)
   lightLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', { 
-    maxZoom: 16 
+    maxZoom: 16,
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
   });
   
+  // 3. Camada Escura da Esri (gratuita e sem chave de API)
   darkLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { 
-    maxZoom: 16 
+    maxZoom: 16,
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
   });
   
+  // 4. Aplica o tema guardado
   trocarTilesMapa(getSavedTheme());
 }
-
       var legend = L.control({position: 'bottomright'});
       legend.onAdd = function () {
           var div = L.DomUtil.create('div', 'info legend');
