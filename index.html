@@ -408,12 +408,19 @@
     }
 
     function carregarMapaInicial() {
-      map = L.map('mapa-container', { minZoom: 4 }).setView([-16.5, -49.0], 5);
-      
-      lightLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 });
-      darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 20 });
-      
-      trocarTilesMapa(getSavedTheme());
+  map = L.map('mapa-container', { minZoom: 4 }).setView([-16.5, -49.0], 5);
+  
+  // Novos links gratuitos da Esri (ArcGIS) sem exigência de API Key
+  lightLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', { 
+    maxZoom: 16 
+  });
+  
+  darkLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', { 
+    maxZoom: 16 
+  });
+  
+  trocarTilesMapa(getSavedTheme());
+}
 
       var legend = L.control({position: 'bottomright'});
       legend.onAdd = function () {
